@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package Perch;
+
+service Backend {
+    rpc interact(Interaction) returns(Acknowledge) {}
+}
+
+message Customer {
+    int32 id = 1;
+}
+
+message Product {
+    int32 id = 1;
+    string name = 2;
+}
+
+message Display {
+    int32 id = 1;
+}
+
+message Interaction {
+    Customer customer = 1;
+    Display display = 2;
+    Product product = 3;
+    int32 hour = 4;
+}
+
+message Acknowledge {
+    bool valid = 1;
+}

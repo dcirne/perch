@@ -1,0 +1,62 @@
+FROM ubuntu:18.04
+
+RUN apt-get update
+
+RUN apt-get install -y \
+        apt-utils \
+        automake \
+        autoconf \
+        build-essential \
+        cmake \
+        curl \
+        g++ \
+        git \
+        libc++-dev \
+        libcurl4-openssl-dev \
+        libedit-dev \
+        libgflags-dev \
+        libicu-dev \
+        libssl-dev \
+        libtinfo-dev \
+        libtool \
+        libxml2 \
+        make \
+        net-tools \
+        openssl \
+        pkg-config \
+        wget
+
+# Cloning gRPC
+RUN echo "Cloning gRPC" && \
+    set -eux && \
+    git clone https://github.com/grpc/grpc.git && \
+    cd grpc && \
+    git checkout v1.21.3 && \
+    git submodule update --init
+
+# Building gRPC
+RUN echo "Building gRPC" && \
+    set -eux && \
+    cd grpc && \
+    make -j4 && \
+    make install
+
+# Protobuf
+RUN echo "Installing Protobuf" && \
+    set -eux && \
+    cd grpc/third_party/protobuf && \
+    make install
+
+RUN mkdir /src
+COPY src /src
+WORKDIR /src
+
+RUN protoc -I ./ --grpc_out=./ --plugin=protoc-gen-grpc=/usr/local/bin/grpc_cpp_plugin Messages_and_Services.proto && \
+    protoc -I ./ --cpp_out=./ Messages_and_Services.proto
+
+RUN g++ Messages_and_Services.pb.cc -std=c++14 -c -o Messages_and_Services.pb.o && \
+    g++ Messages_and_Services.grpc.pb.cc -std=c++14 -c -o Messages_and_Services.grpc.pb.o
+
+RUN g++ Simulation.cpp Messages_and_Services.pb.o Messages_and_Services.grpc.pb.o -std=c++14 -L/usr/local/lib $(pkg-config --libs protobuf grpc++ grpc) -lgrpc++_reflection -ldl -o Simulation
+
+CMD ["./Simulation"]
